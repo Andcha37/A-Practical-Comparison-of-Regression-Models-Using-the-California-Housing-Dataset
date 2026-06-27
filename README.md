@@ -3,11 +3,8 @@
 캘리포니아 주택 가격 데이터셋을 사용해 주택 가격 중앙값(`MedHouseVal`)을 예측하는 회귀 분석 프로젝트입니다.  
 분석은 `scikit-learn`의 California Housing 데이터셋을 기반으로 하며, 탐색적 데이터 분석(EDA), 이상치 및 논리 오류 처리, 지리적 파생 변수 생성, 스케일링, OLS/Ridge/Lasso 회귀 모델 비교까지의 전 과정을 포함합니다.
 
-본 README는 다음 두 산출물을 바탕으로 작성되었습니다.
-
-- `california_housing_regression_comparison.ipynb`: 데이터 불러오기, 전처리, 모델 학습, 평가 지표 산출 코드가 포함된 Jupyter Notebook
+- `california_housing_regression_comparison.ipynb`: 데이터 불러오기, 전처리, 모델 학습, 평가 지표 산출 코드가 포함된 Jupyter Notebook (colab 기반 분석)
 - `compariosn_report.pdf`: 분석 목적, EDA 결과, 전처리 근거, 모델별 해석, 최종 결론이 정리된 보고서  
-  참고: 사용자가 요청한 파일명은 `comparison_report.pdf`였으나, 실제 폴더 내 PDF 파일명은 `compariosn_report.pdf`입니다.
 
 ## 1. 분석 목적
 
@@ -519,4 +516,532 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 | `california_housing_regression_comparison.ipynb` | 전체 분석 코드, EDA, 전처리, 모델링, 평가 지표 산출 |
 | `compariosn_report.pdf` | 과제 제출용 분석 보고서, 결과 해석, 부록 그래프 |
 | `README.md` | 노트북과 PDF 내용을 통합한 프로젝트 설명 및 분석 보고서 |
+
+
+
+
+---
+
+# English Translation
+
+# California Housing Regression Comparison
+
+This project predicts the median housing value (`MedHouseVal`) in California using the California Housing dataset.  
+The analysis is based on the `scikit-learn` California Housing dataset and includes the full workflow: exploratory data analysis (EDA), outlier and logical-error handling, geographic feature engineering, scaling, and comparison of OLS, Ridge, and Lasso regression models.
+
+This README is based on the following two deliverables.
+
+- `california_housing_regression_comparison.ipynb`: Jupyter Notebook containing the code for data loading, preprocessing, model training, and metric calculation
+- `compariosn_report.pdf`: Report summarizing the analysis objective, EDA results, preprocessing rationale, model interpretations, and final conclusions  
+
+## 1. Analysis Objective
+
+The purpose of this analysis is to build regression models that predict the median housing value at the block-group level using demographic and geographic characteristics of California regions. The project does not stop at comparing predictive performance; it focuses on answering the following questions.
+
+1. Which variables have the largest influence on California housing price prediction?
+2. How do geographic variables such as latitude and longitude operate inside linear regression models?
+3. How do regularized regression models such as Ridge and Lasso differ from the baseline OLS model in terms of performance and interpretation?
+4. How do L1 and L2 regularization handle strongly multicollinear feature groups differently?
+
+Ultimately, the analysis compares the predictive performance and regression coefficients of OLS, Ridge, and Lasso to understand the roles of geographic and income-related variables in California housing price prediction.
+
+## 2. Dataset Structure
+
+The analysis uses the California Housing dataset provided by `sklearn.datasets.fetch_california_housing()`.
+
+- Original number of samples: 20,640
+- Original number of independent variables: 8
+- Target variable: `MedHouseVal`
+- Target unit: median housing value in a block group, measured in units of 100,000 dollars
+- Missing values: none across all variables
+- Data type: all variables are continuous numeric variables stored as `float64`
+
+| Type | Variable | Description |
+|---|---:|---|
+| Independent variable | `MedInc` | Median household income within the block group |
+| Independent variable | `HouseAge` | Median housing age within the block group |
+| Independent variable | `AveRooms` | Average number of rooms per household |
+| Independent variable | `AveBedrms` | Average number of bedrooms per household |
+| Independent variable | `Population` | Population within the block group |
+| Independent variable | `AveOccup` | Average number of occupants per household |
+| Independent variable | `Latitude` | Latitude |
+| Independent variable | `Longitude` | Longitude |
+| Target | `MedHouseVal` | Median housing value within the block group |
+
+Key descriptive statistics of the original data are as follows.
+
+| Variable | Mean | Median | Min | Max | Main observation |
+|---|---:|---:|---:|---:|---|
+| `MedInc` | 3.8707 | 3.5348 | 0.4999 | 15.0001 | Income distribution with a right tail |
+| `HouseAge` | 28.6395 | 29.0000 | 1.0000 | 52.0000 | Capped values at 52 |
+| `AveRooms` | 5.4290 | 5.2291 | 0.8462 | 141.9091 | Unrealistically large extreme values |
+| `AveBedrms` | 1.0967 | 1.0488 | 0.3333 | 34.0667 | Some values may exceed the total number of rooms |
+| `Population` | 1425.4767 | 1166.0000 | 3.0000 | 35682.0000 | Heavy-tailed distribution |
+| `AveOccup` | 3.0707 | 2.8181 | 0.6923 | 1243.3333 | Unrealistically large extreme values |
+| `MedHouseVal` | 2.0686 | 1.7970 | 0.1500 | 5.0000 | Capped values around 5.00001 |
+
+## 3. Exploratory Data Analysis Results
+
+### 3.1 Missing Values and Data Types
+
+The notebook checks `X.info()` and `y.info()`. The non-null count is identical for all 20,640 rows across all variables. Therefore, no missing-value imputation or deletion was required.
+
+### 3.2 Univariate Distributions and Outliers
+
+The histograms and boxplots in Appendix 7.1 of the PDF reveal the following issues.
+
+- `MedHouseVal` values above 5.0 are recorded uniformly as `5.00001`. This is interpreted as an upper cap applied during dataset construction rather than a natural price ceiling.
+- `HouseAge` values of 52 and above are all recorded as 52. This is also interpreted as a capped value.
+- The maximum of `AveRooms` is approximately 141.91, which is unrealistic as an average number of rooms per household.
+- The maximum of `AveBedrms` is approximately 34.07, and some rows may contain a logical contradiction where the number of bedrooms exceeds the total number of rooms.
+- The maximum of `AveOccup` is approximately 1243.33, which is not realistic as an average number of occupants per household.
+- `Population` has a maximum of 35,682 and a very long right tail, so it was considered a candidate for log transformation.
+
+These outliers and capped values can cause a linear model to learn distorted patterns. Therefore, they were explicitly controlled during preprocessing.
+
+### 3.3 Correlation and Multicollinearity
+
+In the original correlation analysis, `MedInc` shows a correlation coefficient of 0.69 with `MedHouseVal`, making it the strongest single predictor of housing value.
+
+The following multicollinearity issues were also found.
+
+- The correlation between `AveRooms` and `AveBedrms` is 0.85, which is very high.
+- The correlation between `Latitude` and `Longitude` is -0.92, which is a very strong negative correlation.
+- In the original VIF results, `Latitude` has a VIF of 559.87 and `Longitude` has a VIF of 633.71.
+- `AveRooms` and `AveBedrms` also have high VIF values of 45.99 and 43.59.
+
+These results suggest that regression coefficients may become unstable or that explanatory power may be split across variables carrying overlapping information.
+
+### 3.4 Geographic Spatial Pattern
+
+The latitude-longitude map visualization shows that high-value houses are concentrated along the California coastline, especially around San Francisco, Silicon Valley, Los Angeles, and San Diego.
+
+The report interprets this as a `coastal premium`. Since simple latitude and longitude variables alone may not fully explain access to coastal cities or the price premium around major hubs, additional geographic features were considered necessary.
+
+## 4. Data Preprocessing
+
+The purpose of preprocessing is to control the capped values, extreme values, logical contradictions, and geographic nonlinearity discovered during EDA so that the linear regression models can be trained more stably.
+
+### 4.1 Removing Capped Values
+
+The following condition was applied.
+
+```python
+raw_data_clean = raw_data_clean[
+    (raw_data_clean['HouseAge'] < 52) &
+    (raw_data_clean['MedHouseVal'] <= 5.0)
+]
+```
+
+The rationale is as follows.
+
+- `HouseAge == 52` may include not only houses that are exactly 52 years old, but also all houses older than 52 years that were grouped into the same capped value.
+- `MedHouseVal > 5.0` or values around `5.00001` represent high-value homes compressed into a single upper cap.
+- If these values are used directly, the model may misinterpret the cap itself as a natural price pattern.
+
+### 4.2 IQR-Based Extreme-Value Removal
+
+IQR-based filtering was applied to `AveRooms` and `AveOccup`.
+
+```python
+target_cols = ['AveRooms', 'AveOccup']
+
+for col in target_cols:
+    Q1 = raw_data_clean[col].quantile(0.25)
+    Q3 = raw_data_clean[col].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 3 * IQR
+    upper_bound = Q3 + 3 * IQR
+    raw_data_clean = raw_data_clean[
+        (raw_data_clean[col] >= lower_bound) &
+        (raw_data_clean[col] <= upper_bound)
+    ]
+```
+
+Although 1.5 IQR is commonly used, this analysis used 3 IQR because the distributions have long right tails and some large values may reflect real regional characteristics. In other words, the goal was to remove only extremely abnormal values while minimizing the loss of valid observations.
+
+### 4.3 Removing Logical Contradictions
+
+Since the number of bedrooms cannot exceed the total number of rooms, the following condition was applied.
+
+```python
+raw_data_clean = raw_data_clean[
+    raw_data_clean['AveBedrms'] <= raw_data_clean['AveRooms']
+]
+```
+
+Because extreme values in `AveRooms` were controlled first, the extreme-value problem in `AveBedrms` was also partly mitigated.
+
+### 4.4 Geographic Feature Engineering
+
+#### `lon_lat_mul`
+
+Instead of using latitude and longitude only as separate coordinate variables, the interaction feature `lon_lat_mul` was created by multiplying `Longitude` and `Latitude`.
+
+```python
+raw_data_clean['lon_lat_mul'] = (
+    raw_data_clean['Longitude'] * raw_data_clean['Latitude']
+)
+```
+
+This variable helps the linear regression model learn part of the complex location effect created by the interaction between latitude and longitude.
+
+#### `dist_to_coast`
+
+The report focuses on the observation that high-value houses are concentrated around major coastal cities. To quantify this pattern, the analysis calculated the Euclidean distance from each observation to the nearest among San Francisco, Los Angeles, and San Diego.
+
+```python
+coastal_cities = {
+    'SF': (37.7749, -122.4194),
+    'LA': (34.0522, -118.2437),
+    'SD': (32.7157, -117.1611)
+}
+```
+
+A smaller `dist_to_coast` value means the region is closer to a major coastal city. In the post-preprocessing correlation matrix, the correlation between `dist_to_coast` and `MedHouseVal` is -0.43. This indicates that housing values tend to be higher when a region is closer to a major coastal city.
+
+### 4.5 Log Transformation
+
+Because `Population` has a right-skewed heavy-tailed distribution, `np.log1p()` was applied.
+
+```python
+raw_data_clean1['Population'] = np.log1p(raw_data_clean1['Population'])
+```
+
+In contrast, `dist_to_coast` and `MedInc` were excluded from log transformation because applying a log transformation to those variables reduced predictive performance.
+
+### 4.6 Train-Test Split and Scaling
+
+After preprocessing, the data was structured as follows.
+
+- Final number of samples: 18,285
+- Final number of independent variables: 10
+- Final number of target variables: 1
+- Training data: 12,799 rows
+- Test data: 5,486 rows
+- Split ratio: 70% train, 30% test
+- `random_state`: 42
+
+Even after preprocessing, some variables do not follow a fully normal distribution and still retain some sensitivity to outliers. Therefore, `RobustScaler`, which uses the median and interquartile range, was used instead of `StandardScaler`, which uses the mean and standard deviation.
+
+```python
+robust_scaler = RobustScaler()
+X_train_scaled = robust_scaler.fit_transform(X_train)
+X_test_scaled = robust_scaler.transform(X_test)
+```
+
+## 5. Data Characteristics After Preprocessing
+
+Key descriptive statistics after preprocessing are as follows.
+
+| Variable | Mean | Median | Min | Max | Change |
+|---|---:|---:|---:|---:|---|
+| `MedInc` | 3.6948 | 3.4703 | 0.4999 | 13.1477 | Some high-income extremes were reduced |
+| `HouseAge` | 27.0875 | 27.0000 | 1.0000 | 51.0000 | Capped value at 52 removed |
+| `AveRooms` | 5.2387 | 5.1962 | 0.8462 | 10.6395 | Unrealistic extreme values removed |
+| `AveBedrms` | 1.0677 | 1.0475 | 0.3333 | 3.4111 | Logical contradictions and extremes reduced |
+| `Population` | 1472.8235 | 1210.0000 | 3.0000 | 28566.0000 | Log transformation applied later |
+| `AveOccup` | 2.9453 | 2.8565 | 0.7500 | 5.8859 | Extreme values above 1000 removed |
+| `MedHouseVal` | 1.9002 | 1.7190 | 0.1500 | 5.0000 | Capped values reduced |
+| `dist_to_coast` | 0.8095 | 0.4884 | 0.0043 | 4.6469 | Coastal-city accessibility feature added |
+
+The post-preprocessing correlation analysis shows the following characteristics.
+
+- `MedInc` and `MedHouseVal`: 0.66
+- `dist_to_coast` and `MedHouseVal`: -0.43
+- `AveOccup` and `MedHouseVal`: -0.25
+- `Latitude` and `Longitude`: -0.93
+- `Latitude` and `lon_lat_mul`: nearly -1, indicating an extremely strong correlation
+
+After preprocessing and feature engineering, the VIF values increased for some variables.
+
+| Variable | VIF |
+|---|---:|
+| `MedInc` | 21.4185 |
+| `HouseAge` | 9.1688 |
+| `AveRooms` | 65.1272 |
+| `AveBedrms` | 99.3843 |
+| `Population` | 3.2127 |
+| `AveOccup` | 20.1466 |
+| `Latitude` | 40620.1905 |
+| `Longitude` | 3868.0457 |
+| `lon_lat_mul` | 20940.8515 |
+| `dist_to_coast` | 4.4447 |
+
+This is because `Latitude`, `Longitude`, and `lon_lat_mul` are strongly entangled with each other. This multicollinearity becomes an important reason why the Lasso model later shrinks the coefficient of `Latitude` to 0.
+
+## 6. Modeling Method
+
+The following three models were compared.
+
+1. OLS multiple linear regression
+2. Ridge Regression
+3. Lasso Regression
+
+### 6.1 OLS Multiple Linear Regression
+
+OLS is a baseline linear regression model that minimizes the residual sum of squares without additional hyperparameters.
+
+```python
+ols_reg = LinearRegression()
+ols_reg.fit(X_train_scaled, y_train)
+```
+
+### 6.2 Ridge Regression
+
+Ridge is a linear regression model using L2 regularization. In this analysis, `GridSearchCV` was used to search for the optimal `alpha` with 5-fold cross-validation.
+
+- Search range: from `0.0001` to `100` with a step size of `0.5`
+- Best alpha: 0.0001
+- Test RMSE: 0.5773
+
+Because the best alpha was 0.0001, which is very close to 0, Ridge behaved almost identically to OLS in practice.
+
+### 6.3 Lasso Regression
+
+Lasso is a linear regression model using L1 regularization. As with Ridge, `GridSearchCV` was used to search for the optimal `alpha`.
+
+- Search range: from `0.0001` to `100` with a step size of `0.5`
+- Best alpha: 0.0001
+- Test RMSE: 0.5788
+
+Although the best alpha for Lasso was also close to 0, the L1 regularization property still shrank some coefficients exactly to 0. The most important interpretation point is that the coefficient of `Latitude` became 0.
+
+## 7. Model Performance Comparison
+
+The test-set performance is as follows.
+
+| Metric | OLS | Ridge (`alpha=0.0001`) | Lasso (`alpha=0.0001`) |
+|---|---:|---:|---:|
+| MAE | 0.4275 | 0.4275 | 0.4283 |
+| MSE | 0.3333 | 0.3333 | 0.3350 |
+| RMSE | 0.5773 | 0.5773 | 0.5788 |
+| MAPE | 0.2718 | 0.2718 | 0.2706 |
+| R2 | 0.6416 | 0.6416 | 0.6397 |
+
+The performance can be interpreted as follows.
+
+- OLS and Ridge have virtually identical test performance.
+- Ridge's best alpha is 0.0001, so the L2 penalty barely changes the coefficients.
+- Lasso performs very slightly worse than OLS/Ridge in terms of RMSE, MAE, MSE, and R2.
+- However, Lasso has a MAPE of 0.2706, which is slightly lower than the OLS/Ridge value of 0.2718.
+- In terms of absolute error, OLS and Ridge are better, but in terms of feature selection and coefficient stability, Lasso provides meaningful advantages.
+
+## 8. Regression Coefficient Comparison
+
+### 8.1 OLS Coefficients
+
+| Variable | Coefficient |
+|---|---:|
+| `MedInc` | 0.857125 |
+| `HouseAge` | 0.092367 |
+| `AveRooms` | -0.147485 |
+| `AveBedrms` | 0.077626 |
+| `Population` | 0.023461 |
+| `AveOccup` | -0.259603 |
+| `Latitude` | 6.183152 |
+| `Longitude` | -3.214848 |
+| `lon_lat_mul` | 9.534636 |
+| `dist_to_coast` | -0.166267 |
+
+In OLS, `lon_lat_mul`, `Latitude`, and `Longitude` have the largest coefficient magnitudes. This shows that geographic location has a strong effect on housing value prediction.
+
+### 8.2 Ridge Coefficients
+
+| Variable | Coefficient |
+|---|---:|
+| `MedInc` | 0.857131 |
+| `HouseAge` | 0.092372 |
+| `AveRooms` | -0.147491 |
+| `AveBedrms` | 0.077626 |
+| `Population` | 0.023462 |
+| `AveOccup` | -0.259600 |
+| `Latitude` | 6.179138 |
+| `Longitude` | -3.213733 |
+| `lon_lat_mul` | 9.529439 |
+| `dist_to_coast` | -0.166256 |
+
+The Ridge coefficients are almost identical to the OLS coefficients. This is because the L2 regularization strength is too small to produce meaningful coefficient shrinkage.
+
+### 8.3 Lasso Coefficients
+
+| Variable | Coefficient |
+|---|---:|
+| `MedInc` | 0.865924 |
+| `HouseAge` | 0.099107 |
+| `AveRooms` | -0.155025 |
+| `AveBedrms` | 0.077794 |
+| `Population` | 0.024659 |
+| `AveOccup` | -0.254582 |
+| `Latitude` | 0.000000 |
+| `Longitude` | -1.495193 |
+| `lon_lat_mul` | 1.528402 |
+| `dist_to_coast` | -0.150092 |
+
+In Lasso, `Latitude` is completely removed. Meanwhile, `lon_lat_mul`, `Longitude`, and `MedInc` remain as important variables.
+
+This result clearly shows the feature-selection effect of L1 regularization. Since `Latitude` and `lon_lat_mul` have an almost perfect level of correlation, Lasso simplifies the model by removing `Latitude` and retaining `lon_lat_mul`.
+
+## 9. Main Result Interpretation
+
+### 9.1 The Effect of Regularization Was Limited
+
+Both Ridge and Lasso selected 0.0001 as the best alpha. This means that strong regularization was not required for the current preprocessed data and linear model structure.
+
+Ridge in particular produced almost the same performance and coefficients as OLS. The report interprets this as evidence that the current OLS model is not severely overfitted and that preprocessing controlled noise and extreme values to some extent.
+
+### 9.2 Geographic Variables Were the Strongest Predictors
+
+In OLS and Ridge, `lon_lat_mul`, `Latitude`, and `Longitude` had the largest coefficient magnitudes. In Lasso, `lon_lat_mul` and `Longitude` remained important variables.
+
+This shows that California housing values depend strongly on location, not only on structural characteristics. The map visualization also showed that high-value houses are concentrated along the coastline, especially around San Francisco, Silicon Valley, Los Angeles, and San Diego.
+
+The negative coefficient of `dist_to_coast` in all three models supports the same interpretation.
+
+- OLS: -0.166267
+- Ridge: -0.166256
+- Lasso: -0.150092
+
+In other words, the farther a region is from a major coastal city, the lower the predicted housing value tends to be.
+
+### 9.3 Lasso Removed a Redundant Geographic Variable
+
+The most notable result is that Lasso reduced the coefficient of `Latitude` to 0.
+
+In the post-preprocessing correlation analysis, `Latitude` had a very strong correlation with `lon_lat_mul`, nearly -1. Therefore, `lon_lat_mul` already contained a large amount of latitude information, and Lasso treated `Latitude` as redundant.
+
+This demonstrates one of Lasso's representative strengths: feature selection. Although its performance was very slightly lower than OLS/Ridge, the resulting model became simpler and more interpretable.
+
+### 9.4 L1 and L2 Regularization Handled Multicollinearity Differently
+
+In OLS and Ridge, the coefficients of geographic variables became very large.
+
+- OLS `lon_lat_mul`: 9.534636
+- OLS `Latitude`: 6.183152
+- OLS `Longitude`: -3.214848
+- Ridge `lon_lat_mul`: 9.529439
+- Ridge `Latitude`: 6.179138
+- Ridge `Longitude`: -3.213733
+
+In contrast, Lasso compressed the coefficient range much more tightly.
+
+- Lasso `lon_lat_mul`: 1.528402
+- Lasso `Longitude`: -1.495193
+- Lasso `Latitude`: 0.000000
+
+The report interprets this as follows.
+
+- L2 regularization smoothly shrinks coefficients, but in this analysis the alpha value was too small, so Ridge was almost identical to OLS.
+- L1 regularization can set the coefficients of redundant or unnecessary variables exactly to 0.
+- Therefore, Lasso partially suppressed coefficient inflation caused by multicollinearity among geographic variables.
+- As a result, it removed `Latitude` and redistributed weight mainly across `lon_lat_mul`, `Longitude`, and `MedInc`.
+
+### 9.5 Lasso's Trade-off
+
+Lasso produced a more stable structure in terms of feature selection and coefficient compression, but its absolute-error performance decreased very slightly.
+
+- RMSE: OLS/Ridge 0.5773, Lasso 0.5788
+- R2: OLS/Ridge 0.6416, Lasso 0.6397
+- MAPE: OLS/Ridge 0.2718, Lasso 0.2706
+
+In other words, after removing some information, Lasso's absolute prediction error increased slightly, but its relative percentage error compared with the actual value improved slightly. The report interprets this as a trade-off between information loss from model simplification and prediction stability.
+
+## 10. Final Conclusion
+
+This analysis used OLS, Ridge, and Lasso regression models to predict California housing values and compare model performance and coefficient behavior.
+
+The main conclusions are as follows.
+
+1. The original data contained capped values, unrealistic extreme values, and logically contradictory observations, making preprocessing necessary.
+2. Map visualization and feature engineering showed that access to coastal cities and geographic location strongly influence California housing values.
+3. `MedInc` was a key variable with a strong positive correlation with housing value in both the original and preprocessed data.
+4. OLS and Ridge were almost identical in both performance and coefficients because Ridge's best regularization strength, `alpha=0.0001`, was practically close to no regularization.
+5. Lasso removed `Latitude` and reduced coefficient inflation among geographic variables, producing a simpler model.
+6. In terms of absolute error, OLS and Ridge performed best, but when feature selection and multicollinearity control are also considered, Lasso can be interpreted as a stable and balanced model.
+7. Since all three models are linear models, they have limitations in fully learning the complex spatial nonlinearity of California real estate prices.
+
+The final judgment of the report can be summarized as follows.
+
+- If predictive performance alone is considered, OLS and Ridge are the best.
+- If interpretability and feature selection are also considered, Lasso is the more stable choice.
+- For future performance improvement, nonlinear models such as Random Forest, Gradient Boosting, XGBoost, and LightGBM, or models that incorporate spatial information more precisely, should be considered.
+
+## 11. Limitations and Future Improvements
+
+### 11.1 Limitations of Linear Models
+
+California housing prices are affected by a combination of region, coastal accessibility, metropolitan area, income level, and population density. Because spatial nonlinearity exists, such as sharp price increases in specific areas, simple linear regression coefficients cannot fully explain all patterns.
+
+### 11.2 Multicollinearity Among Geographic Variables
+
+`Latitude`, `Longitude`, and `lon_lat_mul` are strongly correlated with each other. As a result, the coefficient scales in OLS and Ridge became highly inflated. Lasso partially mitigated this, but additional feature engineering is needed to represent location information more effectively.
+
+Possible improvement directions include the following.
+
+- Calculate actual distance to the coastline
+- Add distance variables for each major metropolitan area
+- Cluster latitude and longitude into regional group variables
+- Create spatial grid-based features
+- Apply nonlinear models using latitude and longitude
+
+### 11.3 Model Expansion
+
+The analysis could be improved by comparing the following models in the future.
+
+- Random Forest Regressor
+- Gradient Boosting Regressor
+- XGBoost
+- LightGBM
+- CatBoost
+- Spatially weighted regression or geographically weighted regression
+
+Tree-based ensemble models are especially likely to improve performance because they can automatically capture nonlinear interactions among variables, including the spatial complexity identified as a limitation in this analysis.
+
+## 12. How to Run
+
+### 12.1 Required Libraries
+
+The main libraries used in the notebook are as follows.
+
+```python
+from sklearn import datasets
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import RobustScaler
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.metrics import (
+    mean_absolute_error,
+    mean_squared_error,
+    root_mean_squared_error,
+    r2_score,
+    mean_absolute_percentage_error
+)
+import plotly.express as px
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+```
+
+### 12.2 Reproduction Steps
+
+1. Open and run `california_housing_regression_comparison.ipynb`.
+2. Load the data using `fetch_california_housing()`.
+3. Check histograms, boxplots, correlations, and VIF values for the original data.
+4. Remove capped values and extreme values.
+5. Create the derived variables `lon_lat_mul` and `dist_to_coast`.
+6. Apply log transformation to `Population`.
+7. Split the data into train and test sets using a 7:3 ratio.
+8. Scale the independent variables using `RobustScaler`.
+9. Train OLS, Ridge, and Lasso models.
+10. Compare model performance using MAE, MSE, RMSE, MAPE, and R2.
+11. Interpret model-specific regression coefficients and feature coefficient plots.
+
+## 13. Deliverable Summary
+
+| File | Content |
+|---|---|
+| `california_housing_regression_comparison.ipynb` | Full analysis code, EDA, preprocessing, modeling, and metric calculation |
+| `compariosn_report.pdf` | Assignment report, result interpretation, and appendix figures |
+| `README.md` | Project description and analysis report integrating the notebook and PDF content |
 
